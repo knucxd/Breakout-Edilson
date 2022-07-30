@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Breakout</title>
+  <meta charset="UTF-8">
+  <style>
+  html, body
+  {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: black;
+    display: flex;
+    justify-content: center;
+    color: aliceblue;
+  }
+  </style>
+</head>
+<body>
+<canvas width="400" height="500" id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+
+//Criando a tabela e limitando a quantidade de blocos cada letra representa um bloco e cara letra tambem é uma cor 
+const level1 = [
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+
+  ['P','P','P','P','P','P','P','P','P','P','P','P','P','P'],
+  ['P','P','P','P','P','P','P','P','P','P','P','P','P','P'],
+  ['R','R','R','R','R','R','R','R','R','R','R','R','R','R'],
+  ['R','R','R','R','R','R','R','R','R','R','R','R','R','R'],
+  ['B','B','B','B','B','B','B','B','B','B','B','B','B','B'],
+  ['B','B','B','B','B','B','B','B','B','B','B','B','B','B'],
+  ['Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y'],
+  ['Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y'],
+  ['G','G','G','G','G','G','G','G','G','G','G','G','G','G'],
+  ['G','G','G','G','G','G','G','G','G','G','G','G','G','G']
+  ];
+
+// Mapeando os blocos
+const colorMap = {
+  'P': 'purple',
+  'G': 'green',
+  'Y': 'yellow',
+  'B': 'blue',
+  'R': 'red',
+};
+
+// Espaçamento
+const brickGap = 2;
+const brickWidth = 25;
+const brickHeight = 12;
+
+//Tamanho que a tela vai ocupar
+const wallSize = 12;
+const bricks = [];
+
+// lopping
+for (let row = 0; row < level1.length; row++) {
+  for (let col = 0; col < level1[row].length; col++) {
+    const colorCode = level1[row][col];
+
+    bricks.push({
+      x: wallSize + (brickWidth + brickGap) * col,
+      y: wallSize + (brickHeight + brickGap) * row,
+      color: colorMap[colorCode],
+      width: brickWidth,
+      height: brickHeight
+    });
+  }
+}
+
+const paddle = {
+  // Criando uma barra para rebater
+  x: canvas.width / 2 - brickWidth / 2,
+  y: 440,
+  width: brickWidth,
+  height: brickHeight,
+
+  // Barra e velocidade
+  dx: 0
+};
+
+const ball = {
+  x: 130,
+  y: 260,
+  width: 8,
+  height: 8,
+
+  // velocidade da direção
+  speed: 2.5,
+
+  // velocidade da bola
+  dx: 0,
+  dy: 0
+};
+
+// Colisão
+function collides(obj1, obj2) {
+  return obj1.x < obj2.x + obj2.width &&
+         obj1.x + obj1.width > obj2.x &&
+         obj1.y < obj2.y + obj2.height &&
+         obj1.y + obj1.height > obj2.y;
+}
+
+// game loop
+function loop() {
+  requestAnimationFrame(loop);
+  context.clearRect(0,0,canvas.width,canvas.height);
+
+  // velocidade da barra
+  paddle.x += paddle.dx;
+
+  // codigo pra barra não sair de dentro da area
+  if (paddle.x < wallSize) {
+    paddle.x = wallSize
+  }
+  else if (paddle.x + brickWidth > canvas.width - wallSize) {
+    paddle.x = canvas.width - wallSize - brickWidth;
+  }
+
+  // velocidade de movimento e velocidade da bola 
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+
+  // comando pra bola não sair da area
+  if (ball.x < wallSize) {
+    ball.x = wallSize;
+    ball.dx *= -1;
+  }
+  else if (ball.x + ball.width > canvas.width - wallSize) {
+    ball.x = canvas.width - wallSize - ball.width;
+    ball.dx *= -1;
+  }
+  // Topo da barra
+  if (ball.y < wallSize) {
+    ball.y = wallSize;
+    ball.dy *= -1;
+  }
+
+  // ponto onde a bola vai nascer
+  if (ball.y > canvas.height) {
+    ball.x = 130;
+    ball.y = 260;
+    ball.dx = 0;
+    ball.dy = 0;
+  }
+
+  // mudar a direção da bola quando bate na parede 
+  if (collides(ball, paddle)) {
+    ball.dy *= -1;
+
+    // Colisão da bola com a barra 
+    ball.y = paddle.y - ball.height;
+  }
+
+  // faz o tijolo sumir quando é tocado pela bola 
+  for (let i = 0; i < bricks.length; i++) {
+    const brick = bricks[i];
+
+    if (collides(ball, brick)) {
+      // comando pra deletar o bloco
+      bricks.splice(i, 1);
+
+      // evitar que a boola entre dentro do tijolo
+      if (ball.y + ball.height - ball.speed <= brick.y ||
+          ball.y >= brick.y + brick.height - ball.speed) {
+        ball.dy *= -1;
+      }
+
+      else {
+        ball.dx *= -1;
+      }
+
+      break;
+    }
+  }
+
+  // paredes
+  context.fillStyle = 'lightgrey';
+  context.fillRect(0, 0, canvas.width, wallSize);
+  context.fillRect(0, 0, wallSize, canvas.height);
+  context.fillRect(canvas.width - wallSize, 0, wallSize, canvas.height);
+
+  // movimiento da bola
+  if (ball.dx || ball.dy) {
+    context.fillRect(ball.x, ball.y, ball.width, ball.height);
+  }
+
+  // tijolos
+  bricks.forEach(function(brick) {
+    context.fillStyle = brick.color;
+    context.fillRect(brick.x, brick.y, brick.width, brick.height);
+  });
+
+  // Barra
+  context.fillStyle = 'White';
+  context.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+}
+
+// teclas
+document.addEventListener('keydown', function(e) {
+  // Movimentar para esquerda
+  if (e.which === 37) {
+    paddle.dx = -3;
+  }
+  // movimentar para direita
+  else if (e.which === 39) {
+    paddle.dx = 3;
+  }
+
+  // Comando pra começar 
+  if (ball.dx === 0 && ball.dy === 0 && e.which === 32) {
+    ball.dx = ball.speed;
+    ball.dy = ball.speed;
+  }
+});
+
+//Ler os comandos 
+document.addEventListener('keyup', function(e) {
+  if (e.which === 37 || e.which === 39) {
+    paddle.dx = 0;
+  }
+});
+
+// começar o jogo e fazer um looping
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
